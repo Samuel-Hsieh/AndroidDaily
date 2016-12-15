@@ -32,141 +32,162 @@ import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
 
-	AsyncTask mAsyncTask;
-	Map<String, ArrayList> Maplink;
-	ArrayList<DailyItem> dailyList;
-	RecyclerView titleRecyclerview;
-	LinearLayout RSS_loading;
-	DailyItem dailyItem;
-	//String title;
+    AsyncTask mAsyncTask;
+    ArrayList<DailyItem> dailyList;
+    RecyclerView titleRecyclerview;
+    LinearLayout RSS_loading;
+    DailyItem dailyItem;
+    String extra_data = "";
+    int page = 1;
 
-	@Override
-	protected void onCreate(Bundle savedInstanceState) {
-		super.onCreate(savedInstanceState);
-		setContentView(R.layout.activity_main);
-		Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-		titleRecyclerview = (RecyclerView) findViewById(R.id.titleRecyclerview);
-		RSS_loading = (LinearLayout) findViewById(R.id.RSS_loading);
-		setSupportActionBar(toolbar);
-		FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab_next);
-		fab.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View view) {
-				RunTheDaily();
-			}
-		});
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+        titleRecyclerview = (RecyclerView) findViewById(R.id.titleRecyclerview);
+        RSS_loading = (LinearLayout) findViewById(R.id.RSS_loading);
+        setSupportActionBar(toolbar);
+        FloatingActionButton fab_next = (FloatingActionButton) findViewById(R.id.fab_next);
+        FloatingActionButton fab_forward = (FloatingActionButton) findViewById(R.id.fab_forward);
+        fab_next.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                StopTheDaily();
+                if (page < 5) {
+                    page++;
+                    extra_data += "/index.php/Index/index/p/" + page;
+                    RunTheDaily();
+                }
+            }
+        });
+        fab_forward.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                StopTheDaily();
+                if (page > 1) {
+                    page--;
+                    extra_data += "/index.php/Index/index/p/" + page;
+                    RunTheDaily();
+                }
+            }
+        });
+    }
 
+    public class getTitleData extends AsyncTask<String, Void, ArrayList<DailyItem>> {
 
-	}
+        @Override
+        protected ArrayList<DailyItem> doInBackground(String... urlPath) {
+            try {
+                String title;
+                String url = urlPath[0];
+                String pageUrl = "http://androidblog.cn";
+                Document doc = Jsoup.connect(url).get();
+                Elements links = doc.select("li");
+                for (Element e : links) {
+                    dailyItem = new DailyItem();
+                    title = e.select("p.l-name").toString();
+                    String link = pageUrl + e.select("a").attr("href").toString();
+                    int startStr = title.indexOf('>')+1; //’>‘的下一個開始
+                    int endStr = title.lastIndexOf('<');
+                    title = title.substring(startStr, endStr);
+                    dailyItem.setTitle(title);
+                    dailyItem.setLink(link);
+                    dailyList.add(dailyItem);
+                }
+            } catch (MalformedURLException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            return dailyList;
+        }
 
-	public class getTitleData extends AsyncTask<String, Void, ArrayList<DailyItem>> {
+        @Override
+        protected void onPreExecute() {
+            RSS_loading.setVisibility(View.VISIBLE);
+            super.onPreExecute();
+        }
 
-		@Override
-		protected ArrayList<DailyItem> doInBackground(String... urlPath) {
-			try {
-				String title;
-				String url = urlPath[0];
-				Document doc= Jsoup.connect(url).get();
-				Elements links = doc.select("li");
-				for (Element e : links) {
-					dailyItem = new DailyItem();
-					title = e.select("p.l-name").toString();
-					String link = url+e.select("a").attr("href").toString();
-					int startStr = title.indexOf('A');
-					int endStr = title.lastIndexOf('<');
-					title = title.substring(startStr,endStr);
-					dailyItem.setTitle(title);
-					dailyItem.setLink(link);
-					dailyList.add(dailyItem);
-//					Log.v("日報","title: "+dailyItem.getTitle());
-//					Log.v("日報","link: "+dailyItem.getLink());
-				}
-			} catch (MalformedURLException e) {
-				e.printStackTrace();
-			}  catch (IOException e) {
-				e.printStackTrace();
-			}
-			return dailyList;
-		}
+        @Override
+        protected void onPostExecute(ArrayList<DailyItem> linklist) {
+            titleRecyclerview.setLayoutManager(new LinearLayoutManager(MainActivity.this));
+            titleRecyclerview.setAdapter(new RecyclerViewAdpter(MainActivity.this, dailyList));
+            RSS_loading.setVisibility(View.GONE);
+            super.onPostExecute(linklist);
+        }
+    }
 
-		@Override
-		protected void onPreExecute() {
-			RSS_loading.setVisibility(View.VISIBLE);
-			super.onPreExecute();
-		}
+    @Override
+    protected void onStop() {
+        StopTheDaily();
+        super.onStop();
+    }
 
-		@Override
-		protected void onPostExecute(ArrayList<DailyItem> linklist) {
-			titleRecyclerview.setLayoutManager(new LinearLayoutManager(MainActivity.this));
-			titleRecyclerview.setAdapter(new RecyclerViewAdpter(MainActivity.this, dailyList));
-			RSS_loading.setVisibility(View.GONE);
-			super.onPostExecute(linklist);
-		}
-	}
+    @Override
+    protected void onResume() {
+        if (isConnected()) {
+            RunTheDaily();
+        } else {
+            new AlertDialog.Builder(this)
+                    .setTitle("網路無法連線")
+                    .setMessage("請檢查網路是否已經連線")
+                    .setPositiveButton("確定", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            Intent intent = new Intent();
+                            intent.setAction("android.settings.WIFI_SETTINGS");
+                            startActivityForResult(intent, MainActivity.RESULT_OK);
+                        }
+                    })
+                    .show();
+        }
+        super.onResume();
+    }
 
-	@Override
-	protected void onStop() {
-		if(mAsyncTask!=null){
-			mAsyncTask.cancel(true);
-			mAsyncTask = null;
-			dailyList = null;
-			dailyItem = null;
-		}
-		super.onStop();
-	}
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.menu_main, menu);
+        return true;
+    }
 
-	@Override
-	protected void onResume() {
-		if (isConnected()) {
-			RunTheDaily();
-		}else{
-			new AlertDialog.Builder(this)
-					.setTitle("網路無法連線")
-					.setMessage("請檢查網路是否已經連線")
-					.setPositiveButton("確定", new DialogInterface.OnClickListener() {
-						@Override
-						public void onClick(DialogInterface dialog, int which) {
-							Intent intent = new Intent();
-							intent.setAction("android.settings.WIFI_SETTINGS");
-							startActivityForResult(intent,MainActivity.RESULT_OK);
-						}
-					})
-					.show();
-		}
-		super.onResume();
-	}
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
 
-	@Override
-	public boolean onCreateOptionsMenu(Menu menu) {
-		getMenuInflater().inflate(R.menu.menu_main, menu);
-		return true;
-	}
+        int id = item.getItemId();
+        if (id == R.id.action_settings) {
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
 
-	@Override
-	public boolean onOptionsItemSelected(MenuItem item) {
+    private void RunTheDaily() {
+        Log.v("page","page: "+page);
+        if (mAsyncTask == null) {
+            dailyList = new ArrayList<>();
+            String[] url = {"http://androidblog.cn" + extra_data};
+            Log.v("url","url: "+ url[0]);
+            mAsyncTask = new getTitleData();
+            mAsyncTask.execute(url);
+        }
+    }
 
-		int id = item.getItemId();
-		if (id == R.id.action_settings) {
-			return true;
-		}
-		return super.onOptionsItemSelected(item);
-	}
+    private void StopTheDaily() {
+        if (mAsyncTask != null) {
+            mAsyncTask.cancel(true);
+            mAsyncTask = null;
+            dailyList = null;
+            dailyItem = null;
+            extra_data = "";
+        }
+    }
 
-	private void RunTheDaily(){
-		if (mAsyncTask == null) {
-			dailyList = new ArrayList<>();
-			String[] url = {"http://androidblog.cn"};
-			mAsyncTask = new getTitleData();
-			mAsyncTask.execute(url);
-		}
-	}
-
-	private boolean isConnected(){
-		ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
-		NetworkInfo networkInfo = cm.getActiveNetworkInfo();
-		if (networkInfo != null && networkInfo.isConnected()) {
-			return true;
-		}
-		return false;
-	}
+    private boolean isConnected() {
+        ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo networkInfo = cm.getActiveNetworkInfo();
+        if (networkInfo != null && networkInfo.isConnected()) {
+            return true;
+        }
+        return false;
+    }
 }

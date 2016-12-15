@@ -28,15 +28,15 @@
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
         android:layout_margin="@dimen/fab_margin"
-        android:src="@android:drawable/ic_menu_revert"/>
+        android:src="@drawable/arrow_right"/>
 
     <android.support.design.widget.FloatingActionButton
         android:id="@+id/fab_forward"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom"
+        android:layout_gravity="bottom|start"
         android:layout_margin="@dimen/fab_margin"
-        android:src="@android:drawable/ic_menu_revert"/>
+        android:src="@drawable/arrow_left"/>
 
     <include layout="@layout/content_main"/>
 
