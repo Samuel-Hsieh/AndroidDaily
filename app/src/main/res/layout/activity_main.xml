@@ -36,6 +36,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|start"
         android:layout_margin="@dimen/fab_margin"
+        android:visibility="gone"
         android:src="@drawable/arrow_left"/>
 
     <include layout="@layout/content_main"/>

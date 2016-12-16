@@ -18,6 +18,7 @@ import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.LinearLayout;
+import android.widget.Toast;
 
 
 import org.jsoup.Jsoup;
@@ -39,6 +40,10 @@ public class MainActivity extends AppCompatActivity {
     DailyItem dailyItem;
     String extra_data = "";
     int page = 1;
+    int totalPage;
+    String pageTotalStr;
+    FloatingActionButton fab_next, fab_forward;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,30 +53,33 @@ public class MainActivity extends AppCompatActivity {
         titleRecyclerview = (RecyclerView) findViewById(R.id.titleRecyclerview);
         RSS_loading = (LinearLayout) findViewById(R.id.RSS_loading);
         setSupportActionBar(toolbar);
-        FloatingActionButton fab_next = (FloatingActionButton) findViewById(R.id.fab_next);
-        FloatingActionButton fab_forward = (FloatingActionButton) findViewById(R.id.fab_forward);
-        fab_next.setOnClickListener(new View.OnClickListener() {
+        fab_next = (FloatingActionButton) findViewById(R.id.fab_next);
+        fab_forward = (FloatingActionButton) findViewById(R.id.fab_forward);
+        View.OnClickListener listener = new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 StopTheDaily();
-                if (page < 5) {
-                    page++;
-                    extra_data += "/index.php/Index/index/p/" + page;
-                    RunTheDaily();
+                extra_data = "";
+                switch (view.getId()) {
+                    case R.id.fab_next:
+                        if (page < totalPage) {
+                            page++;
+                            extra_data += "/index.php/Index/index/p/" + page;
+                            RunTheDaily();
+                        }
+                        break;
+                    case R.id.fab_forward:
+                        if (page > 1) {
+                            page--;
+                            extra_data += "/index.php/Index/index/p/" + page;
+                            RunTheDaily();
+                        }
+                        break;
                 }
             }
-        });
-        fab_forward.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                StopTheDaily();
-                if (page > 1) {
-                    page--;
-                    extra_data += "/index.php/Index/index/p/" + page;
-                    RunTheDaily();
-                }
-            }
-        });
+        };
+        fab_next.setOnClickListener(listener);
+        fab_forward.setOnClickListener(listener);
     }
 
     public class getTitleData extends AsyncTask<String, Void, ArrayList<DailyItem>> {
@@ -82,13 +90,22 @@ public class MainActivity extends AppCompatActivity {
                 String title;
                 String url = urlPath[0];
                 String pageUrl = "http://androidblog.cn";
-                Document doc = Jsoup.connect(url).get();
+                Document doc = Jsoup.connect(url).timeout(15000).get(); //延遲15s
+
+                Elements catchPage = doc.select("div");
+                pageTotalStr = catchPage.toString();
+                int start = pageTotalStr.indexOf(page + "/") + 2;
+                int end = pageTotalStr.indexOf(" 页");
+                pageTotalStr = pageTotalStr.substring(start, end);
+                totalPage = Integer.parseInt(pageTotalStr);
+                Log.v("Html", "pagetatal: " + totalPage);
+
                 Elements links = doc.select("li");
                 for (Element e : links) {
                     dailyItem = new DailyItem();
                     title = e.select("p.l-name").toString();
                     String link = pageUrl + e.select("a").attr("href").toString();
-                    int startStr = title.indexOf('>')+1; //’>‘的下一個開始
+                    int startStr = title.indexOf('>') + 1; //’>‘的下一個開始
                     int endStr = title.lastIndexOf('<');
                     title = title.substring(startStr, endStr);
                     dailyItem.setTitle(title);
@@ -114,6 +131,14 @@ public class MainActivity extends AppCompatActivity {
             titleRecyclerview.setLayoutManager(new LinearLayoutManager(MainActivity.this));
             titleRecyclerview.setAdapter(new RecyclerViewAdpter(MainActivity.this, dailyList));
             RSS_loading.setVisibility(View.GONE);
+            if(page == totalPage){
+                fab_next.setVisibility(View.GONE);
+            }else if(page == 1){
+                fab_forward.setVisibility(View.GONE);
+            } else {
+                fab_next.setVisibility(View.VISIBLE);
+                fab_forward.setVisibility(View.VISIBLE);
+            }
             super.onPostExecute(linklist);
         }
     }
@@ -162,11 +187,10 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void RunTheDaily() {
-        Log.v("page","page: "+page);
         if (mAsyncTask == null) {
             dailyList = new ArrayList<>();
             String[] url = {"http://androidblog.cn" + extra_data};
-            Log.v("url","url: "+ url[0]);
+            Log.v("url", "url: " + url[0]);
             mAsyncTask = new getTitleData();
             mAsyncTask.execute(url);
         }
@@ -178,7 +202,6 @@ public class MainActivity extends AppCompatActivity {
             mAsyncTask = null;
             dailyList = null;
             dailyItem = null;
-            extra_data = "";
         }
     }
 
