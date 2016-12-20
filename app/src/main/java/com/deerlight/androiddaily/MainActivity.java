@@ -14,10 +14,14 @@ import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
+import android.view.Gravity;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.ViewGroup;
 import android.widget.LinearLayout;
+import android.widget.PopupWindow;
 import android.widget.Toast;
 
 
@@ -28,6 +32,7 @@ import org.jsoup.select.Elements;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
+import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.Map;
 
@@ -36,13 +41,15 @@ public class MainActivity extends AppCompatActivity {
     AsyncTask mAsyncTask;
     ArrayList<DailyItem> dailyList;
     RecyclerView titleRecyclerview;
-    LinearLayout RSS_loading;
+    LinearLayout RSS_loading, time_out;
     DailyItem dailyItem;
     String extra_data = "";
     int page = 1;
     int totalPage;
     String pageTotalStr;
     FloatingActionButton fab_next, fab_forward;
+    boolean isTimeOut = false;
+    boolean isFabLock = false;
 
 
     @Override
@@ -50,31 +57,35 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
         titleRecyclerview = (RecyclerView) findViewById(R.id.titleRecyclerview);
         RSS_loading = (LinearLayout) findViewById(R.id.RSS_loading);
-        setSupportActionBar(toolbar);
+        time_out = (LinearLayout) findViewById(R.id.timeout);
         fab_next = (FloatingActionButton) findViewById(R.id.fab_next);
         fab_forward = (FloatingActionButton) findViewById(R.id.fab_forward);
         View.OnClickListener listener = new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                StopTheDaily();
-                extra_data = "";
-                switch (view.getId()) {
-                    case R.id.fab_next:
-                        if (page < totalPage) {
-                            page++;
-                            extra_data += "/index.php/Index/index/p/" + page;
-                            RunTheDaily();
-                        }
-                        break;
-                    case R.id.fab_forward:
-                        if (page > 1) {
-                            page--;
-                            extra_data += "/index.php/Index/index/p/" + page;
-                            RunTheDaily();
-                        }
-                        break;
+                if(!isFabLock){
+                    StopTheDaily();
+                    extra_data = "";
+                    switch (view.getId()) {
+                        case R.id.fab_next:
+                            if (page++ < totalPage) {
+                                extra_data += "/index.php/Index/index/p/" + page;
+                                RunTheDaily();
+                            }
+                            break;
+                        case R.id.fab_forward:
+                            if (page-- > 1) {
+                                extra_data += "/index.php/Index/index/p/" + page;
+                                RunTheDaily();
+                            }
+                            break;
+                        default:
+                            Log.v("switch","Something wrong");
+                            break;
+                    }
                 }
             }
         };
@@ -90,7 +101,7 @@ public class MainActivity extends AppCompatActivity {
                 String title;
                 String url = urlPath[0];
                 String pageUrl = "http://androidblog.cn";
-                Document doc = Jsoup.connect(url).timeout(15000).get(); //延遲15s
+                Document doc = Jsoup.connect(url).timeout(10000).get(); //延遲15s
 
                 Elements catchPage = doc.select("div");
                 pageTotalStr = catchPage.toString();
@@ -114,6 +125,9 @@ public class MainActivity extends AppCompatActivity {
                 }
             } catch (MalformedURLException e) {
                 e.printStackTrace();
+            }catch (SocketTimeoutException e){
+                isTimeOut = true;
+                e.printStackTrace();
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -123,11 +137,16 @@ public class MainActivity extends AppCompatActivity {
         @Override
         protected void onPreExecute() {
             RSS_loading.setVisibility(View.VISIBLE);
+            isFabLock = true;
             super.onPreExecute();
         }
 
         @Override
         protected void onPostExecute(ArrayList<DailyItem> linklist) {
+            if (isTimeOut){
+                time_out.setVisibility(View.VISIBLE);
+            }
+            isFabLock = false;
             titleRecyclerview.setLayoutManager(new LinearLayoutManager(MainActivity.this));
             titleRecyclerview.setAdapter(new RecyclerViewAdpter(MainActivity.this, dailyList));
             RSS_loading.setVisibility(View.GONE);
@@ -157,6 +176,7 @@ public class MainActivity extends AppCompatActivity {
             new AlertDialog.Builder(this)
                     .setTitle("網路無法連線")
                     .setMessage("請檢查網路是否已經連線")
+                    .setCancelable(false)
                     .setPositiveButton("確定", new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
@@ -188,11 +208,12 @@ public class MainActivity extends AppCompatActivity {
 
     private void RunTheDaily() {
         if (mAsyncTask == null) {
-            dailyList = new ArrayList<>();
             String[] url = {"http://androidblog.cn" + extra_data};
-            Log.v("url", "url: " + url[0]);
+            time_out.setVisibility(View.GONE);
+            dailyList = new ArrayList<>();
             mAsyncTask = new getTitleData();
             mAsyncTask.execute(url);
+            Log.v("url", "url: " + url[0]);
         }
     }
 
@@ -202,6 +223,7 @@ public class MainActivity extends AppCompatActivity {
             mAsyncTask = null;
             dailyList = null;
             dailyItem = null;
+            isTimeOut = false;
         }
     }
 
@@ -212,5 +234,9 @@ public class MainActivity extends AppCompatActivity {
             return true;
         }
         return false;
+    }
+    public void RetryOnClick(View v){
+        StopTheDaily();
+        RunTheDaily();
     }
 }
