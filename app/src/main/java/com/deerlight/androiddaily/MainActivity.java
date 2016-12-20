@@ -14,15 +14,10 @@ import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
-import android.view.Gravity;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.ViewGroup;
 import android.widget.LinearLayout;
-import android.widget.PopupWindow;
-import android.widget.Toast;
 
 
 import org.jsoup.Jsoup;
@@ -33,6 +28,7 @@ import org.jsoup.select.Elements;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.SocketTimeoutException;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Map;
 
@@ -41,7 +37,7 @@ public class MainActivity extends AppCompatActivity {
     AsyncTask mAsyncTask;
     ArrayList<DailyItem> dailyList;
     RecyclerView titleRecyclerview;
-    LinearLayout RSS_loading, time_out;
+    LinearLayout Html_loading, time_out;
     DailyItem dailyItem;
     String extra_data = "";
     int page = 1;
@@ -59,7 +55,7 @@ public class MainActivity extends AppCompatActivity {
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         titleRecyclerview = (RecyclerView) findViewById(R.id.titleRecyclerview);
-        RSS_loading = (LinearLayout) findViewById(R.id.RSS_loading);
+        Html_loading = (LinearLayout) findViewById(R.id.Html_loading);
         time_out = (LinearLayout) findViewById(R.id.timeout);
         fab_next = (FloatingActionButton) findViewById(R.id.fab_next);
         fab_forward = (FloatingActionButton) findViewById(R.id.fab_forward);
@@ -101,7 +97,7 @@ public class MainActivity extends AppCompatActivity {
                 String title;
                 String url = urlPath[0];
                 String pageUrl = "http://androidblog.cn";
-                Document doc = Jsoup.connect(url).timeout(10000).get(); //延遲15s
+                Document doc = Jsoup.connect(url).timeout(10000).get(); //延遲10s
 
                 Elements catchPage = doc.select("div");
                 pageTotalStr = catchPage.toString();
@@ -128,6 +124,8 @@ public class MainActivity extends AppCompatActivity {
             }catch (SocketTimeoutException e){
                 isTimeOut = true;
                 e.printStackTrace();
+            }catch (UnknownHostException e){
+                e.printStackTrace();
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -136,7 +134,7 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         protected void onPreExecute() {
-            RSS_loading.setVisibility(View.VISIBLE);
+            Html_loading.setVisibility(View.VISIBLE);
             isFabLock = true;
             super.onPreExecute();
         }
@@ -149,7 +147,7 @@ public class MainActivity extends AppCompatActivity {
             isFabLock = false;
             titleRecyclerview.setLayoutManager(new LinearLayoutManager(MainActivity.this));
             titleRecyclerview.setAdapter(new RecyclerViewAdpter(MainActivity.this, dailyList));
-            RSS_loading.setVisibility(View.GONE);
+            Html_loading.setVisibility(View.GONE);
             if(page == totalPage){
                 fab_next.setVisibility(View.GONE);
             }else if(page == 1){

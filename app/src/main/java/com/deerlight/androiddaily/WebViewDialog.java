@@ -35,6 +35,7 @@ public class WebViewDialog  {
 		this.title = title;
 		this.link = link;
 		myWebView = new WebView(context);
+		myWebView.getSettings().setJavaScriptEnabled(true);
 		myWebView.loadUrl(link);
 		myWebView.setWebViewClient(new WebViewClient() {
 			@Override
