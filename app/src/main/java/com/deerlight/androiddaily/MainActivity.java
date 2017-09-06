@@ -161,6 +161,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
+    public void onBackPressed() {
+        super.onBackPressed();
+        moveTaskToBack(true);
+    }
+
+    @Override
     protected void onStop() {
         StopTheDaily();
         super.onStop();
