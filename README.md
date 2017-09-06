@@ -4,6 +4,11 @@
 
 我的Android技術週報app
 
+<img src="https://github.com/Samuel-Hsieh/AndroidDaily/blob/master/png/Screenshot_1504707075.png" width="350"/>
+
+<img src="https://github.com/Samuel-Hsieh/AndroidDaily/blob/master/png/Screenshot_1504707071.png" width="350"/>
+
+
 <h2>來源</h2>
 
 [Android博客週刊](http://androidblog.cn/)
